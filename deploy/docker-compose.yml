@@ -1,10 +1,14 @@
 version: "2.1"
 services:
   tink-server:
-    build: ../cmd/tink-server
+    image: ${TINKERBELL_TINK_SERVER_IMAGE}
     restart: unless-stopped
     environment:
       FACILITY: ${FACILITY:-onprem}
+      PACKET_ENV: ${PACKET_ENV:-testing}
+      PACKET_VERSION: ${PACKET_VERSION:-ignored}
+      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN:-ignored}
+      ROLLBAR_DISABLE: ${ROLLBAR_DISABLE:-1}
       PGDATABASE: tinkerbell
       PGHOST: db
       PGPASSWORD: tinkerbell
@@ -32,7 +36,7 @@ services:
       - 42114:42114/tcp
 
   tink-server-migration:
-    build: ../cmd/tink-server
+    image: ${TINKERBELL_TINK_SERVER_IMAGE}
     restart: on-failure
     environment:
       ONLY_MIGRATION: "true"
@@ -57,9 +61,9 @@ services:
     image: postgres:10-alpine
     restart: unless-stopped
     environment:
+      POSTGRES_DB: tinkerbell
       POSTGRES_PASSWORD: tinkerbell
       POSTGRES_USER: tinkerbell
-      POSTGRES_DB: tinkerbell
     volumes:
       - postgres_data:/var/lib/postgresql/data:rw
     ports:
@@ -71,7 +75,7 @@ services:
       retries: 30
 
   tink-cli:
-    build: ../cmd/tink-cli
+    image: ${TINKERBELL_TINK_CLI_IMAGE}
     restart: unless-stopped
     environment:
       TINKERBELL_GRPC_AUTHORITY: 127.0.0.1:42113
@@ -91,7 +95,7 @@ services:
         REGISTRY_PASSWORD: $TINKERBELL_REGISTRY_PASSWORD
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl --cacert /certs/ca.pem -fsSL https://127.0.0.1"]
+      test: ["CMD-SHELL", "curl --cacert /certs/ca.pem https://127.0.0.1"]
       interval: 5s
       timeout: 1s
       retries: 5
@@ -108,7 +112,7 @@ services:
     network_mode: host
 
   boots:
-    image: quay.io/tinkerbell/boots:latest
+    image: ${TINKERBELL_TINK_BOOTS_IMAGE}
     restart: unless-stopped
     network_mode: host
     command: -dhcp-addr 0.0.0.0:67 -tftp-addr $TINKERBELL_HOST_IP:69 -http-addr $TINKERBELL_HOST_IP:80 -log-level DEBUG
@@ -116,7 +120,11 @@ services:
       API_AUTH_TOKEN: ${PACKET_API_AUTH_TOKEN:-ignored}
       API_CONSUMER_TOKEN: ${PACKET_CONSUMER_TOKEN:-ignored}
       FACILITY_CODE: ${FACILITY:-onprem}
-      MIRROR_HOST: ${TINKERBELL_NGINX_IP:-127.0.0.1}
+      PACKET_ENV: ${PACKET_ENV:-testing}
+      PACKET_VERSION: ${PACKET_VERSION:-ignored}
+      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN:-ignored}
+      ROLLBAR_DISABLE: ${ROLLBAR_DISABLE:-1}
+      MIRROR_HOST: ${TINKERBELL_HOST_IP:-127.0.0.1}:8080
       DNS_SERVERS: 8.8.8.8
       PUBLIC_IP: $TINKERBELL_HOST_IP
       BOOTP_BIND: $TINKERBELL_HOST_IP:67
@@ -143,24 +151,30 @@ services:
     restart: unless-stopped
     tty: true
     ports:
-      - $TINKERBELL_NGINX_IP:80:80/tcp
+      - 8080:80/tcp
     volumes:
       - ./state/webroot:/usr/share/nginx/html/
 
   hegel:
-    image: quay.io/tinkerbell/hegel:latest
+    image: ${TINKERBELL_TINK_HEGEL_IMAGE}
     restart: unless-stopped
     network_mode: host
     environment:
+      ROLLBAR_TOKEN: ${ROLLBAR_TOKEN-ignored}
+      ROLLBAR_DISABLE: 1
+      PACKET_ENV: testing
+      PACKET_VERSION: ${PACKET_VERSION:-ignored}
       GRPC_PORT: 42115
       HEGEL_FACILITY: ${FACILITY:-onprem}
       HEGEL_USE_TLS: 0
       TINKERBELL_GRPC_AUTHORITY: 127.0.0.1:42113
       TINKERBELL_CERT_URL: http://127.0.0.1:42114/cert
       DATA_MODEL_VERSION: 1
+      CUSTOM_ENDPOINTS: '{"/metadata":""}'
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   postgres_data:
+
