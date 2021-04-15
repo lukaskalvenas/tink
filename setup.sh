@@ -8,8 +8,9 @@ set -eu
 # See https://tinkerbell.org/setup for the installation steps.
 
 # file to hold all environment variables
-ENV_FILE=envrc
-
+ENV_FILE=.env
+IFACE=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)')
+echo -e "Network interface is ${IFACE}"
 SCRATCH=$(mktemp -d -t tmp.XXXXXXXXXX)
 readonly SCRATCH
 function finish() (
@@ -257,7 +258,7 @@ setup_osie() (
 		pushd "$SCRATCH"
 
 		if [ -z "${TB_OSIE_TAR:-}" ]; then
-			curl -fsSL 'https://tinkerbell-oss.s3.amazonaws.com/osie-uploads/latest.tar.gz' -o ./osie.tar.gz
+			curl -fsSL "${OSIE_DOWNLOAD_LINK}" -o ./osie.tar.gz
 			tar -zxf osie.tar.gz
 		else
 			tar -zxf "$TB_OSIE_TAR"
@@ -405,7 +406,7 @@ start_registry() (
 bootstrap_docker_registry() (
 	docker_login
 
-	docker_mirror_image "quay.io/tinkerbell/tink-worker:latest" "${TINKERBELL_HOST_IP}/tink-worker:latest"
+	docker_mirror_image "${TINKERBELL_TINK_WORKER_IMAGE}" "${TINKERBELL_HOST_IP}/tink-worker:latest"
 )
 
 setup_docker_registry() (
@@ -480,15 +481,15 @@ check_prerequisites() (
 )
 
 whats_next() (
-	echo "$NEXT  1. Enter /vagrant/deploy and run: source ../envrc; docker-compose up -d"
+	echo "$NEXT  1. Enter /vagrant/deploy and run: source ../.env; docker-compose up -d --build"
 	echo "$BLANK 2. Try executing your first workflow."
 	echo "$BLANK    Follow the steps described in https://tinkerbell.org/examples/hello-world/ to say 'Hello World!' with a workflow."
 )
 
 setup_nat() (
-	iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT
-	iptables -A FORWARD -i eth0 -o eth1 -m state --state ESTABLISHED,RELATED -j ACCEPT
-	iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+	iptables -A FORWARD -i $IFACE -o $IFACE -j ACCEPT
+	iptables -A FORWARD -i $IFACE -o $IFACE -m state --state ESTABLISHED,RELATED -j ACCEPT
+	iptables -t nat -A POSTROUTING -o $IFACE -j MASQUERADE
 )
 
 do_setup() (
@@ -506,7 +507,7 @@ do_setup() (
 
 	# shellcheck disable=SC1090
 	source "$ENV_FILE"
-
+    source "$IFACE"
 	setup_networking "$lsb_dist" "$lsb_version"
 	setup_nat
 	setup_osie
@@ -520,3 +521,4 @@ do_setup() (
 # wrapped up in a function so that we have some protection against only getting
 # half the file during "curl | sh"
 do_setup
+

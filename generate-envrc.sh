@@ -11,6 +11,8 @@ fi
 
 ERR="${RED:-}ERROR:${RESET:-}"
 
+source ./current_versions.sh
+
 err() (
 	if [ -z "${1:-}" ]; then
 		cat >&2
@@ -52,23 +54,31 @@ generate_envrc() (
 	local registry_password
 	registry_password=$(generate_password)
 	cat <<EOF
+# Tinkerbell Stack version	
+		
+export OSIE_DOWNLOAD_LINK=${OSIE_DOWNLOAD_LINK}	
+export TINKERBELL_TINK_SERVER_IMAGE=${TINKERBELL_TINK_SERVER_IMAGE}	
+export TINKERBELL_TINK_CLI_IMAGE=${TINKERBELL_TINK_CLI_IMAGE}	
+export TINKERBELL_TINK_BOOTS_IMAGE=${TINKERBELL_TINK_BOOTS_IMAGE}	
+export TINKERBELL_TINK_HEGEL_IMAGE=${TINKERBELL_TINK_HEGEL_IMAGE}	
+export TINKERBELL_TINK_WORKER_IMAGE=${TINKERBELL_TINK_WORKER_IMAGE}
 # Network interface for Tinkerbell's network
 export TINKERBELL_NETWORK_INTERFACE="$tink_interface"
 
 # Decide on a subnet for provisioning. Tinkerbell should "own" this
 # network space. Its subnet should be just large enough to be able
 # to provision your hardware.
-export TINKERBELL_CIDR=29
+export TINKERBELL_CIDR=27
 
 # Host IP is used by provisioner to expose different services such as
 # tink, boots, etc.
 #
 # The host IP should the first IP in the range, and the Nginx IP
 # should be the second address.
-export TINKERBELL_HOST_IP=192.168.1.1
+export TINKERBELL_HOST_IP=193.31.40.5
 
 # NGINX IP is used by provisioner to serve files required for iPXE boot
-export TINKERBELL_NGINX_IP=192.168.1.2
+export TINKERBELL_NGINX_IP=185.135.11.228
 
 # Tink server username and password
 export TINKERBELL_TINK_USERNAME=admin
@@ -85,7 +95,7 @@ EOF
 
 main() (
 	if [ -z "${1:-}" ]; then
-		err "Usage: $0 network-interface-name > envrc"
+		err "Usage: $0 network-interface-name > .env"
 		exit 1
 	fi
 
@@ -93,3 +103,4 @@ main() (
 )
 
 main "$@"
+
