@@ -507,7 +507,6 @@ do_setup() (
 
 	# shellcheck disable=SC1090
 	source "$ENV_FILE"
-    source "$IFACE"
 	setup_networking "$lsb_dist" "$lsb_version"
 	setup_nat
 	setup_osie
